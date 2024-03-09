@@ -1,0 +1,113 @@
+procedure for starting firebase (for easy reference)
+ npm install -g firebase-tools
+dart pub global activate flutterfire_cli
+$ firebase login
+
+$ dart pub global activate flutterfire_cli
+
+#ignore this one if you don't need it
+$ export PATH="$PATH":"$HOME/.pub-cache/bin"
+
+#select project name
+
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class Firestore {
+  //name ur firebase student data
+  final CollectionReference notes =
+      FirebaseFirestore.instance.collection('student_data');
+
+  Future<void> addNote(String uid, String name, int marks) {
+    //return notes.add({'note': note, 'time': Timestamp.now()});
+    return notes.add(
+        {'student_uid': uid, 'student_name': name, 'student_marks': marks});
+  }
+
+  Stream<QuerySnapshot> getNotesStream() {
+    // final notesStream = notes.orderBy('time', descending: true).snapshots();
+    // return notesStream;
+
+    final studentsData = notes.orderBy('uid', descending: true).snapshots();
+    return studentsData;
+  }
+
+  Future<void> updateNote(String id, int marks) {
+    //return notes.doc(id).update({'note': newNote, 'time': DateTime.now()});
+    return notes.doc(id).update({
+      'student_marks':marks
+    });
+  }
+
+  Future<void> delete(String id) {
+    return notes.doc(id).delete();
+  }
+}
+
+void openNotes(String? docId) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            content: TextField(
+              controller: textCon,
+            ),
+            actions: [
+              ElevatedButton(
+                  onPressed: () {
+                    if(docId==null){
+                      fire.addNote(textCon.text);
+                    }
+                    else{
+                      fire.updateNote(docId, textCon.text);
+                    }
+                    textCon.clear();
+                    Navigator.pop(context);
+                  },
+                  child: Text('add'))
+            ],
+          );
+        });
+  }
+Scaffold(
+      appBar: AppBar(
+        title: Text('firestore test'),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => openNotes,
+        child: Icon(Icons.add),
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: fire.getNotesStream(),
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            List notes = snapshot.data!.docs;
+
+            return ListView.builder(
+                itemCount: notes.length,
+                itemBuilder: (context, index) {
+                  DocumentSnapshot doc = notes[index];
+
+                  String docId = doc.id;
+
+                  Map<String, dynamic> data =
+                      doc.data() as Map<String, dynamic>;
+                  String notesText = data['note'];
+
+                  return ListTile(
+                    title: Text(notesText),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(onPressed: ()=> openNotes(docId), icon: Icon(Icons.settings)),
+                        IconButton(onPressed: ()=>fire.delete(docId), icon:Icon(Icons.transit_enterexit_sharp))
+                      ],
+                    )
+                  );
+                });
+          } else {
+            return Text('no new notes :)');
+          }
+        },
+      ),
+    );
